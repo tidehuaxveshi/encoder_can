@@ -8,11 +8,11 @@
 void can_setting_init(CAN_HandleTypeDef *hcan)
 {
 	hcan->Instance = CAN1;
-	hcan->Init.Prescaler = 16;
+	hcan->Init.Prescaler = 6;
 	hcan->Init.Mode = CAN_MODE_NORMAL;
 	hcan->Init.SyncJumpWidth = CAN_SJW_1TQ;
-	hcan->Init.TimeSeg1 = CAN_BS1_1TQ;
-	hcan->Init.TimeSeg2 = CAN_BS2_1TQ;
+	hcan->Init.TimeSeg1 = CAN_BS1_3TQ;
+	hcan->Init.TimeSeg2 = CAN_BS2_2TQ;
 	hcan->Init.TimeTriggeredMode = DISABLE;
 	hcan->Init.AutoBusOff = DISABLE;
 	hcan->Init.AutoWakeUp = DISABLE;
@@ -92,7 +92,7 @@ uint32_t FDCAN_GetDLC(uint8_t length)
 	return 8;
 }
 
-HAL_StatusTypeDef FDCAN_SendData(uint8_t *data, uint32_t id, uint32_t length, uint32_t STD_EXT, uint32_t BRS, uint32_t FD)
+HAL_StatusTypeDef FDCAN_SendData(uint8_t *data, uint32_t id, uint32_t length, uint32_t STD_EXT)
 {
 	CAN_TxHeaderTypeDef header;
 	HAL_StatusTypeDef status;
