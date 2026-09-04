@@ -68,9 +68,9 @@ void tim_init(void)
     // __HAL_TIM_SET_AUTORELOAD(&htim2, 1000 - 1);
     // __HAL_TIM_SET_COUNTER(&htim2, 0);
     // HAL_TIM_Base_Start_IT(&htim2);
-    __HAL_TIM_SET_PRESCALER(&htim1, 72 - 1);
-    __HAL_TIM_SET_AUTORELOAD(&htim1, 60000 - 1);
-    __HAL_TIM_SET_COUNTER(&htim1, 0);
+    // __HAL_TIM_SET_PRESCALER(&htim1, 72 - 1);
+    // __HAL_TIM_SET_AUTORELOAD(&htim1, 60000 - 1);
+    // __HAL_TIM_SET_COUNTER(&htim1, 0);
     //HAL_TIM_Base_Start_IT(&htim1);
 }
 void time_init(void)

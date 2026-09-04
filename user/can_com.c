@@ -1,96 +1,11 @@
 #include "can_com.h"
 
-/**
- * @brief can init setting
- * @return null
- * @note the clock frequence of can must not be changed in cubemx
- */
-void can_setting_init(CAN_HandleTypeDef *hcan)
-{
-	hcan->Instance = CAN1;
-	hcan->Init.Prescaler = 6;
-	hcan->Init.Mode = CAN_MODE_NORMAL;
-	hcan->Init.SyncJumpWidth = CAN_SJW_1TQ;
-	hcan->Init.TimeSeg1 = CAN_BS1_3TQ;
-	hcan->Init.TimeSeg2 = CAN_BS2_2TQ;
-	hcan->Init.TimeTriggeredMode = DISABLE;
-	hcan->Init.AutoBusOff = DISABLE;
-	hcan->Init.AutoWakeUp = DISABLE;
-	hcan->Init.AutoRetransmission = DISABLE;
-	hcan->Init.ReceiveFifoLocked = DISABLE;
-	hcan->Init.TransmitFifoPriority = DISABLE;
+CAN_TxHeaderTypeDef TxHeader;
+CAN_RxHeaderTypeDef RxHeader;
+static uint8_t TxData[8];
+uint8_t FreeTxNum;
+uint32_t TxMailbox = 0;
 
-	if (HAL_CAN_Init(hcan) != HAL_OK)
-	{
-		Error_Handler();
-	}
-}
-
-/**
- * @brief update can rx filter configration in mask mode
- * @param tx pointer to can tx header
- * @return null
- * @note null
- */
-void can_mask_filter_add(uint32_t id, uint32_t mask_setting, uint32_t fifo_setting, uint32_t filter_bank, uint32_t STD_EXT, uint32_t RTR)
-{
-	CAN_FilterTypeDef filter_config;
-
-	filter_config.FilterBank = filter_bank;
-	filter_config.FilterMode = CAN_FILTERMODE_IDMASK;
-	filter_config.FilterScale = CAN_FILTERSCALE_32BIT;
-	filter_config.FilterFIFOAssignment = fifo_setting;
-	filter_config.FilterActivation = ENABLE;
-	filter_config.SlaveStartFilterBank = 14;
-	if (STD_EXT == CAN_ID_STD)
-	{
-		uint32_t filter_id;
-		uint32_t filter_mask;
-		filter_id = (id << 21);
-		if (RTR == CAN_RTR_REMOTE)
-		{
-			filter_id |= (1U << 1);
-		}
-		filter_mask = (mask_setting << 21);
-		filter_mask |= (1U << 2);
-		filter_config.FilterIdHigh = (uint16_t)(filter_id >> 16);
-		filter_config.FilterIdLow = (uint16_t)(filter_id & 0xFFFF);
-		filter_config.FilterMaskIdHigh = (uint16_t)(filter_mask >> 16);
-		filter_config.FilterMaskIdLow = (uint16_t)(filter_mask & 0xFFFF);
-	}
-	else
-	{
-		uint32_t filter_id;
-		uint32_t filter_mask;
-		filter_id = (id << 3);
-		filter_id |= (1U << 2);
-		if (RTR == CAN_RTR_REMOTE)
-		{
-			filter_id |= (1U << 1);
-		}
-		filter_mask = (mask_setting << 3);
-		filter_mask |= (1U << 2);
-		filter_config.FilterIdHigh = (uint16_t)(filter_id >> 16);
-		filter_config.FilterIdLow = (uint16_t)(filter_id & 0xFFFF);
-		filter_config.FilterMaskIdHigh = (uint16_t)(filter_mask >> 16);
-		filter_config.FilterMaskIdLow = (uint16_t)(filter_mask & 0xFFFF);
-	}
-
-	if (HAL_CAN_ConfigFilter(&hcan, &filter_config) != HAL_OK)
-	{
-		Error_Handler();
-	}
-}
-
-uint32_t FDCAN_GetDLC(uint8_t length)
-{
-	if (length <= 8)
-	{
-		return length;
-	}
-
-	return 8;
-}
 
 HAL_StatusTypeDef FDCAN_SendData(uint8_t *data, uint32_t id, uint32_t length, uint32_t STD_EXT)
 {
@@ -123,7 +38,7 @@ HAL_StatusTypeDef FDCAN_SendData(uint8_t *data, uint32_t id, uint32_t length, ui
 		header.IDE = CAN_ID_EXT;
 	}
 	header.RTR = CAN_RTR_DATA;
-	header.DLC = FDCAN_GetDLC(length);
+	header.DLC = length;
 	header.TransmitGlobalTime = DISABLE;
 	status = HAL_CAN_AddTxMessage(tx, &header, data, &tx_mailbox);
 	return status;
@@ -131,9 +46,39 @@ HAL_StatusTypeDef FDCAN_SendData(uint8_t *data, uint32_t id, uint32_t length, ui
 
 void can_init(void)
 {
-	can_setting_init(&hcan);
-	can_mask_filter_add(0, 0, CAN_FILTER_FIFO0, 0, CAN_ID_STD, CAN_RTR_DATA);
-	can_mask_filter_add(0, 0, CAN_FILTER_FIFO0, 1, CAN_ID_EXT, CAN_RTR_DATA);
-	HAL_CAN_Start(&hcan);
-	HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+	CAN_FilterTypeDef  sFilterConfig;
+	sFilterConfig.FilterBank = 0;
+	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
+	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
+	sFilterConfig.FilterIdHigh = 0x0000;
+	sFilterConfig.FilterIdLow = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdLow = 0x0000;
+	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
+	sFilterConfig.FilterActivation = ENABLE;
+	sFilterConfig.SlaveStartFilterBank = 14; // meaningless
+	if (HAL_CAN_ConfigFilter(&hcan, &sFilterConfig) != HAL_OK)
+	{
+		/* Filter configuration Error */
+		Error_Handler();
+	}
+
+	if (HAL_CAN_Start(&hcan) != HAL_OK)
+	{
+		/* Start Error */
+		Error_Handler();
+	}
+	
+	if (HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+	{
+		/* Activation Error */
+		Error_Handler();
+	}
+	
+	
+	TxHeader.StdId = 0x00;
+	TxHeader.IDE = CAN_ID_STD;
+	TxHeader.RTR = CAN_RTR_DATA;
+	TxHeader.DLC = 8; 
+	TxHeader.TransmitGlobalTime = DISABLE;
 }

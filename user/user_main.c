@@ -21,7 +21,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     get_time();
     // DwtClock_DelayUs(10);
     // get_time();
-    if (htim->Instance == TIM1)
+    if (htim->Instance == htim1.Instance)
     {
         // motor_count = (motor_count + 1) % 5;
         // count = (count + 1) % 100;
