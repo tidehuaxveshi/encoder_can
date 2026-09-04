@@ -12,20 +12,18 @@ void user_init(void)
     can_init();
     encoder_init();
 }
-uint8_t data[8] = {0};
-uint8_t device_state = 0;
-uint32_t motor_count = 0;
-uint32_t count = 0;
+float t1=0;
+float t2=0;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
     get_time();
-    // DwtClock_DelayUs(10);
-    // get_time();
     if (htim->Instance == htim1.Instance)
     {
-        // motor_count = (motor_count + 1) % 5;
-        // count = (count + 1) % 100;
-        FDCAN_SendData(data, 0x12, 8, CAN_ID_STD);
+        uint8_t data[8] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7};
+        t1=get_time();
+        HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_15);
+        FDCAN_SendData(data, 0x11, 8, CAN_ID_STD);
         MT6816_Get_Angle(&encoder);
+        t2=get_time();
     }
 }
